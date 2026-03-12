@@ -1,0 +1,5 @@
+{
+  "name": "Agente AI",
+  "description": "A ChatGPT-style interface for chatting with your uploaded documents, supporting PDFs, Word files, and images with multi-dataset management.",
+  "requestFramePermissions": []
+}
