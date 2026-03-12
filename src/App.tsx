@@ -12,7 +12,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min?url';
-import { Bot } from 'lucide-react';
+import { Bot, Download } from 'lucide-react';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -26,6 +26,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [fileData, setFileData] = useState<{content: string, type: string, name: string} | null>(null);
   const [useFallback, setUseFallback] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -33,6 +35,25 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    });
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallPrompt(false);
+      }
+    }
+  };
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -162,16 +183,27 @@ export default function App() {
           <Bot className="w-6 h-6" />
           <h1 className="text-xl font-bold">Agente AI</h1>
         </div>
-        {user ? (
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-red-100">{user.email}</span>
-            <button onClick={() => auth.signOut()} className="text-sm font-medium bg-white text-red-600 px-3 py-1 rounded-md hover:bg-red-50 transition-colors">Logout</button>
-          </div>
-        ) : (
-          <button onClick={handleLogin} className="px-4 py-2 bg-white text-red-600 font-medium rounded-lg text-sm hover:bg-red-50 transition-colors">
-            Login
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {showInstallPrompt && (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center gap-1 bg-white text-red-600 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-red-50 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Installa App</span>
+            </button>
+          )}
+          {user ? (
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-red-100 hidden sm:inline">{user.email}</span>
+              <button onClick={() => auth.signOut()} className="text-sm font-medium bg-white text-red-600 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors">Logout</button>
+            </div>
+          ) : (
+            <button onClick={handleLogin} className="px-4 py-1.5 bg-white text-red-600 font-medium rounded-md text-sm hover:bg-red-50 transition-colors">
+              Login
+            </button>
+          )}
+        </div>
       </header>
       <main className="flex-1 p-4 overflow-y-auto">
         {user ? (
